@@ -1,3 +1,4 @@
+#include <SD.h>
 #include "wav.hpp"
 
 uint8_t  sine_wave[256] = {
@@ -39,7 +40,7 @@ void setup() {
     Serial.begin(115200);
 
     if(SD.begin()) {
-        Wav8BitLoader wav("/novo.wav");
+        Wav8BitLoader wav(SD, "/novo.wav");
         if(wav.header.chunkSize > 0) {
             Serial.print("RIFF: 0x");
             Serial.println(wav.header.chunkID, HEX);
@@ -79,9 +80,14 @@ void setup() {
 
             Serial.print("Sub chunk 2 size: ");
             Serial.println(wav.header.subChunk2Size, DEC);
-            for(int i = 0; i < 256; ++i) {
-                wav.writeSample(sine_wave[i]);
+
+            unsigned long totalTime = 5; // segundos
+            size_t numSamples = wav.header.byteRate * totalTime;
+            for(int i = 0, j = 0; i < numSamples; ++i) {
+                wav.writeSample(sine_wave[j++]);
+                j %= 256;
             }
+            Serial.println("OK");
         } else {
             Serial.println("Erro ao ler arquivo");
         }

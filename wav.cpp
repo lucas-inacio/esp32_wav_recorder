@@ -1,10 +1,9 @@
-#include "mySD.h"
 #include <memory.h>
 #include <stdio.h>
 
 #include "wav.hpp"
 
-bool writeLoop(ext::File &file, uint8_t *data, size_t size) {
+bool writeLoop(File &file, uint8_t *data, size_t size) {
     size_t bytesRemaining = size;
     size_t bytesWritten = 0;
     size_t offset = 0;
@@ -19,10 +18,10 @@ bool writeLoop(ext::File &file, uint8_t *data, size_t size) {
     return true;
 }
 
-Wav8BitLoader::Wav8BitLoader(char *filename)
-: m_FileName{filename}, m_BufferCounter{0} {
-    uint8_t mode = SD.exists(filename) ? FILE_READ : FILE_WRITE;
-    ext::File file = SD.open(filename, mode);
+Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
+: m_FileName{filename}, m_BufferCounter{0}, m_FileSystem{fileSystem} {
+    const char* mode = m_FileSystem.exists(filename) ? FILE_READ : FILE_WRITE;
+    File file = m_FileSystem.open(filename, mode);
     bool success;
     if(file) {
         if(file.size() > 0) {
@@ -43,7 +42,7 @@ Wav8BitLoader::~Wav8BitLoader() {
 }
 
 bool Wav8BitLoader::flush() {
-    ext::File file = SD.open(m_FileName, FILE_WRITE);
+    File file = m_FileSystem.open(m_FileName, FILE_WRITE);
     if(file) {
         bool success = true;
         // Pula para o final do arquivo
@@ -79,7 +78,7 @@ bool Wav8BitLoader::writeSample(uint8_t sample) {
     return true;
 }
 
-bool Wav8BitLoader::createHeader(ext::File &file) {
+bool Wav8BitLoader::createHeader(File &file) {
     uint8_t *wavHeader = reinterpret_cast<uint8_t*>(&header);
     // Chunk ID
     wavHeader[0]  = 'R';
@@ -142,7 +141,7 @@ bool Wav8BitLoader::createHeader(ext::File &file) {
     return writeLoop(file, wavHeader, WAV_HEADER_SIZE);
 }
 
-bool Wav8BitLoader::loadHeader(ext::File &file) {
+bool Wav8BitLoader::loadHeader(File &file) {
     uint8_t buffer[WAV_HEADER_SIZE] = { 0 };
     size_t bytesRemaining = WAV_HEADER_SIZE;
     size_t offset = 0;
@@ -159,3 +158,6 @@ bool Wav8BitLoader::loadHeader(ext::File &file) {
     memcpy(&header, buffer, WAV_HEADER_SIZE);
     return true;
 }
+
+// bool flushHeader(File &file) {
+// }

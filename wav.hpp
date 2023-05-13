@@ -10,7 +10,7 @@
 #define WAV_HEADER_SIZE 44
 
 #include <Arduino.h>
-#include <mySD.h>
+#include <FS.h>
 
 struct WavHeader {
     uint32_t chunkID;
@@ -31,17 +31,19 @@ struct WavHeader {
 struct Wav8BitLoader {
     WavHeader header;
 
-    Wav8BitLoader(char *filename);
+    Wav8BitLoader(fs::FS &fileSystem, const char *filename);
     ~Wav8BitLoader();
     bool flush();
     bool writeSample(uint8_t sample);
 private:
-    bool createHeader(ext::File &file);
-    bool loadHeader(ext::File &file);
+    bool createHeader(File &file);
+    bool loadHeader(File &file);
+    // bool flushHeader(File &file);
 
     uint8_t m_Buffer[BUFFER_LENGTH];
     size_t m_BufferCounter;
     const char *m_FileName;
+    fs::FS m_FileSystem;
 };
 
 #endif // WAV_HPP
