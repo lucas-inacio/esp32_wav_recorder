@@ -39,7 +39,10 @@ uint8_t  sine_wave[256] = {
 void setup() {
     Serial.begin(115200);
 
-    if(SD.begin()) {
+    // 10MHz padrão é 4MHz
+    // if(SD.begin()) {
+    if(SD.begin(SS, SPI, 10000000)) {
+        delay(2000);
         Wav8BitLoader wav(SD, "/novo.wav");
         if(wav.header.chunkSize > 0) {
             Serial.print("RIFF: 0x");

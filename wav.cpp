@@ -26,10 +26,14 @@ Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
     if(file) {
         if(file.size() > 0) {
             success = loadHeader(file);
+            //  Reabre o arquivo para escrita
+            file.close();
+            m_File = m_FileSystem.open(filename, FILE_WRITE);
         } else {
             success = createHeader(file);
+            file.flush();
+            m_File = file;
         }
-        file.close();
     }
 
     if(!success)
@@ -37,34 +41,35 @@ Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
 }
 
 Wav8BitLoader::~Wav8BitLoader() {
-    if(m_BufferCounter > 0)
+    if(m_BufferCounter > 0) {
         flush();
+        m_File.close();
+    }
 }
 
 bool Wav8BitLoader::flush() {
-    File file = m_FileSystem.open(m_FileName, FILE_WRITE);
-    if(file) {
-        bool success = true;
-        // Pula para o final do arquivo
-        file.seek(file.size());
-        if(writeLoop(file, m_Buffer, m_BufferCounter)) {
-            // Atualiza os cabeçalhos
-            header.chunkSize += m_BufferCounter;
-            file.seek(4);
-            writeLoop(file, reinterpret_cast<uint8_t *>(&header.chunkSize), 4);
+    unsigned long start = millis();
 
-            header.subChunk2Size += m_BufferCounter;
-            file.seek(40);
-            writeLoop(file, reinterpret_cast<uint8_t *>(&header.subChunk2Size), 4);
+    // Pula para o final do arquivo
+    m_File.seek(m_File.size());
+    if(writeLoop(m_File, m_Buffer, m_BufferCounter)) {
+        // Atualiza os cabeçalhos
+        header.chunkSize += m_BufferCounter;
+        m_File.seek(4);
+        writeLoop(m_File, reinterpret_cast<uint8_t *>(&header.chunkSize), 4);
 
-            m_BufferCounter = 0;
-        } else {
-            success = false;
-        }
-        file.close();
-        return success;
+        header.subChunk2Size += m_BufferCounter;
+        m_File.seek(40);
+        writeLoop(m_File, reinterpret_cast<uint8_t *>(&header.subChunk2Size), 4);
+
+        m_File.flush();
+        m_BufferCounter = 0;
+    } else {
+        return false;
     }
-    return false;
+
+    // Serial.println(millis() - start);
+    return true;
 }
 
 bool Wav8BitLoader::writeSample(uint8_t sample) {
@@ -158,6 +163,3 @@ bool Wav8BitLoader::loadHeader(File &file) {
     memcpy(&header, buffer, WAV_HEADER_SIZE);
     return true;
 }
-
-// bool flushHeader(File &file) {
-// }
