@@ -6,7 +6,7 @@
 #ifndef WAV_HPP
 #define WAV_HPP
 
-#define BUFFER_LENGTH   256
+#define BUFFER_LENGTH   4096
 #define WAV_HEADER_SIZE 44
 
 #include <Arduino.h>
@@ -35,6 +35,7 @@ struct Wav8BitLoader {
     ~Wav8BitLoader();
     bool flush();
     bool writeSample(uint8_t sample);
+    void printHeader() const;
 private:
     bool createHeader(File &file);
     bool loadHeader(File &file);

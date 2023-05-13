@@ -20,6 +20,9 @@ bool writeLoop(File &file, uint8_t *data, size_t size) {
 
 Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
 : m_FileName{filename}, m_BufferCounter{0}, m_FileSystem{fileSystem} {
+    // Se o arquivo existir abre para leitura e preenche o cabeçalho.
+    // Senão cria o cabeçalho do zero. O arquivo é mantido aberto no modo
+    // de escrita.
     const char* mode = m_FileSystem.exists(filename) ? FILE_READ : FILE_WRITE;
     File file = m_FileSystem.open(filename, mode);
     bool success;
@@ -30,6 +33,7 @@ Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
             file.close();
             m_File = m_FileSystem.open(filename, FILE_WRITE);
         } else {
+            // Força escrita do cabeçalho
             success = createHeader(file);
             file.flush();
             m_File = file;
@@ -42,18 +46,19 @@ Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
 
 Wav8BitLoader::~Wav8BitLoader() {
     if(m_BufferCounter > 0) {
+        // Escreve dados restantes
         flush();
         m_File.close();
     }
 }
 
 bool Wav8BitLoader::flush() {
-    unsigned long start = millis();
+    // unsigned long start = millis();
 
     // Pula para o final do arquivo
     m_File.seek(m_File.size());
     if(writeLoop(m_File, m_Buffer, m_BufferCounter)) {
-        // Atualiza os cabeçalhos
+        // Atualiza os cabeçalhos. Informação de tamanho do arquivo.
         header.chunkSize += m_BufferCounter;
         m_File.seek(4);
         writeLoop(m_File, reinterpret_cast<uint8_t *>(&header.chunkSize), 4);
@@ -81,6 +86,47 @@ bool Wav8BitLoader::writeSample(uint8_t sample) {
     }
 
     return true;
+}
+
+void Wav8BitLoader::printHeader() const {
+    Serial.print("RIFF: 0x");
+    Serial.println(header.chunkID, HEX);
+
+    Serial.print("Chunk size: ");
+    Serial.println(header.chunkSize, DEC);
+
+    Serial.print("Format: 0x");
+    Serial.println(header.format, HEX);
+
+    Serial.print("Sub chunk 1 ID: ");
+    Serial.println(header.subChunk1ID, HEX);
+
+    Serial.print("Sub chunk 1 size: ");
+    Serial.println(header.subChunk1Size, DEC);
+
+    Serial.print("Audio format: ");
+    Serial.println(header.audioFormat, DEC);
+
+    Serial.print("Number of channels: ");
+    Serial.println(header.numChannels, DEC);
+
+    Serial.print("Sample rate: ");
+    Serial.println(header.sampleRate, DEC);
+
+    Serial.print("Byte rate: ");
+    Serial.println(header.byteRate, DEC);
+
+    Serial.print("Block align: ");
+    Serial.println(header.blockAlign, DEC);
+
+    Serial.print("Bits per sample: ");
+    Serial.println(header.bitsPerSample, DEC);
+
+    Serial.print("Sub chunk 2 ID: 0x");
+    Serial.println(header.subChunk2ID, HEX);
+
+    Serial.print("Sub chunk 2 size: ");
+    Serial.println(header.subChunk2Size, DEC);
 }
 
 bool Wav8BitLoader::createHeader(File &file) {

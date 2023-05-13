@@ -39,58 +39,21 @@ uint8_t  sine_wave[256] = {
 void setup() {
     Serial.begin(115200);
 
-    // 10MHz padrão é 4MHz
+    // 10MHz padrão é 4MHz. Se não funcionar comente a linha 44 e use a linha 43
     // if(SD.begin()) {
     if(SD.begin(SS, SPI, 10000000)) {
         delay(2000);
+        Serial.println("Iniciando escrita do arquivo.");
         Wav8BitLoader wav(SD, "/novo.wav");
         if(wav.header.chunkSize > 0) {
-            Serial.print("RIFF: 0x");
-            Serial.println(wav.header.chunkID, HEX);
-
-            Serial.print("Chunk size: ");
-            Serial.println(wav.header.chunkSize, DEC);
-
-            Serial.print("Format: 0x");
-            Serial.println(wav.header.format, HEX);
-
-            Serial.print("Sub chunk 1 ID: ");
-            Serial.println(wav.header.subChunk1ID, HEX);
-
-            Serial.print("Sub chunk 1 size: ");
-            Serial.println(wav.header.subChunk1Size, DEC);
-
-            Serial.print("Audio format: ");
-            Serial.println(wav.header.audioFormat, DEC);
-
-            Serial.print("Number of channels: ");
-            Serial.println(wav.header.numChannels, DEC);
-
-            Serial.print("Sample rate: ");
-            Serial.println(wav.header.sampleRate, DEC);
-
-            Serial.print("Byte rate: ");
-            Serial.println(wav.header.byteRate, DEC);
-
-            Serial.print("Block align: ");
-            Serial.println(wav.header.blockAlign, DEC);
-
-            Serial.print("Bits per sample: ");
-            Serial.println(wav.header.bitsPerSample, DEC);
-
-            Serial.print("Sub chunk 2 ID: 0x");
-            Serial.println(wav.header.subChunk2ID, HEX);
-
-            Serial.print("Sub chunk 2 size: ");
-            Serial.println(wav.header.subChunk2Size, DEC);
-
+            // Grava um áudio de 5 segundos a 8kB/s
             unsigned long totalTime = 5; // segundos
             size_t numSamples = wav.header.byteRate * totalTime;
             for(int i = 0, j = 0; i < numSamples; ++i) {
                 wav.writeSample(sine_wave[j++]);
                 j %= 256;
             }
-            Serial.println("OK");
+            wav.printHeader();
         } else {
             Serial.println("Erro ao ler arquivo");
         }
