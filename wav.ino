@@ -1,66 +1,134 @@
+#include <driver/adc.h>
+#include <sd_defines.h>
+#include <sd_diskio.h>
+#include <FS.h>
 #include <SD.h>
+#include <SPI.h>
+#include <soc/sens_reg.h>
+#include <soc/sens_struct.h>
+
 #include "wav.hpp"
 
-uint8_t  sine_wave[256] = {
-  0x80, 0x83, 0x86, 0x89, 0x8C, 0x90, 0x93, 0x96,
-  0x99, 0x9C, 0x9F, 0xA2, 0xA5, 0xA8, 0xAB, 0xAE,
-  0xB1, 0xB3, 0xB6, 0xB9, 0xBC, 0xBF, 0xC1, 0xC4,
-  0xC7, 0xC9, 0xCC, 0xCE, 0xD1, 0xD3, 0xD5, 0xD8,
-  0xDA, 0xDC, 0xDE, 0xE0, 0xE2, 0xE4, 0xE6, 0xE8,
-  0xEA, 0xEB, 0xED, 0xEF, 0xF0, 0xF1, 0xF3, 0xF4,
-  0xF5, 0xF6, 0xF8, 0xF9, 0xFA, 0xFA, 0xFB, 0xFC,
-  0xFD, 0xFD, 0xFE, 0xFE, 0xFE, 0xFF, 0xFF, 0xFF,
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFE, 0xFE, 0xFD,
-  0xFD, 0xFC, 0xFB, 0xFA, 0xFA, 0xF9, 0xF8, 0xF6,
-  0xF5, 0xF4, 0xF3, 0xF1, 0xF0, 0xEF, 0xED, 0xEB,
-  0xEA, 0xE8, 0xE6, 0xE4, 0xE2, 0xE0, 0xDE, 0xDC,
-  0xDA, 0xD8, 0xD5, 0xD3, 0xD1, 0xCE, 0xCC, 0xC9,
-  0xC7, 0xC4, 0xC1, 0xBF, 0xBC, 0xB9, 0xB6, 0xB3,
-  0xB1, 0xAE, 0xAB, 0xA8, 0xA5, 0xA2, 0x9F, 0x9C,
-  0x99, 0x96, 0x93, 0x90, 0x8C, 0x89, 0x86, 0x83,
-  0x80, 0x7D, 0x7A, 0x77, 0x74, 0x70, 0x6D, 0x6A,
-  0x67, 0x64, 0x61, 0x5E, 0x5B, 0x58, 0x55, 0x52,
-  0x4F, 0x4D, 0x4A, 0x47, 0x44, 0x41, 0x3F, 0x3C,
-  0x39, 0x37, 0x34, 0x32, 0x2F, 0x2D, 0x2B, 0x28,
-  0x26, 0x24, 0x22, 0x20, 0x1E, 0x1C, 0x1A, 0x18,
-  0x16, 0x15, 0x13, 0x11, 0x10, 0x0F, 0x0D, 0x0C,
-  0x0B, 0x0A, 0x08, 0x07, 0x06, 0x06, 0x05, 0x04,
-  0x03, 0x03, 0x02, 0x02, 0x02, 0x01, 0x01, 0x01,
-  0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x03,
-  0x03, 0x04, 0x05, 0x06, 0x06, 0x07, 0x08, 0x0A,
-  0x0B, 0x0C, 0x0D, 0x0F, 0x10, 0x11, 0x13, 0x15,
-  0x16, 0x18, 0x1A, 0x1C, 0x1E, 0x20, 0x22, 0x24,
-  0x26, 0x28, 0x2B, 0x2D, 0x2F, 0x32, 0x34, 0x37,
-  0x39, 0x3C, 0x3F, 0x41, 0x44, 0x47, 0x4A, 0x4D,
-  0x4F, 0x52, 0x55, 0x58, 0x5B, 0x5E, 0x61, 0x64,
-  0x67, 0x6A, 0x6D, 0x70, 0x74, 0x77, 0x7A, 0x7D
-};
+// Referente a configurações do ADC
+#define ADC_BUFFER       1024
+#define ADC_NUM_BYTES    512 // 256 amostras de 16 bits
 
-void setup() {
-    Serial.begin(115200);
+// Dupla de buffers. Eles são trocados sempre que há dados suficientes para escrita.
+// O tamanho deve ser um múltiplo de ADC_NUM_BYTES / 2
+#define EXCHANGE_BUFFER_SIZE 2048
+uint8_t buffer1[EXCHANGE_BUFFER_SIZE];
+uint8_t buffer2[EXCHANGE_BUFFER_SIZE];
+size_t loopCounter = 0;
+volatile uint8_t *loopPointer = buffer1;  // usado no loop
+volatile uint8_t *storePointer = buffer2; // usado na tarefa de gravação
 
-    // 10MHz padrão é 4MHz. Se não funcionar comente a linha 44 e use a linha 43
-    // if(SD.begin()) {
-    if(SD.begin(SS, SPI, 10000000)) {
-        delay(2000);
-        Serial.println("Iniciando escrita do arquivo.");
-        Wav8BitLoader wav(SD, "/novo.wav");
-        if(wav.header.chunkSize > 0) {
-            // Grava um áudio de 5 segundos a 8kB/s
-            unsigned long totalTime = 5; // segundos
-            size_t numSamples = wav.header.byteRate * totalTime;
-            for(int i = 0, j = 0; i < numSamples; ++i) {
-                wav.writeSample(sine_wave[j++]);
-                j %= 256;
-            }
-            wav.printHeader();
-        } else {
-            Serial.println("Erro ao ler arquivo");
-        }
-    } else {
-        Serial.println("Erro ao abrir SD");
+TaskHandle_t storeTaskHandle;
+
+void swap_buffers() {
+    volatile uint8_t *tmp = loopPointer;
+    loopPointer = storePointer;
+    storePointer = tmp;
+}
+
+static void continuous_adc_init(void)
+{
+    // Inicializa o driver ADC
+    adc_digi_init_config_t adc_dma_config = {
+        .max_store_buf_size = 1024,
+        .conv_num_each_intr = ADC_NUM_BYTES,
+        .adc1_chan_mask = BIT(7), // Canal 7 (pino 35 do ESP32)
+        .adc2_chan_mask = ADC_UNIT_1,
+    };
+    ESP_ERROR_CHECK(adc_digi_initialize(&adc_dma_config));
+
+    // Configura o canal 7 do ADC1 (GPIO35)
+    adc_digi_pattern_config_t adc_pattern = {
+        .atten = ADC_ATTEN_DB_0,
+        .channel = ADC1_CHANNEL_7,
+        .unit = 0,
+        .bit_width = SOC_ADC_DIGI_MAX_BITWIDTH,
+    };
+
+    // Configura o ADC para operar no modo DMA
+    adc_digi_configuration_t dig_cfg = {
+        .conv_limit_en = 1, // Segundo a documentação do SDK v4.4.4 esse valor deve ser 1 para ESP32
+        .conv_limit_num = 250,
+        .pattern_num = 1, // Apenas um canal é utilizado
+        .adc_pattern = &adc_pattern,
+        .sample_freq_hz = 44100, // Amostragem a 8kS/s (áudio a 8kHz)
+        .conv_mode = ADC_CONV_SINGLE_UNIT_1,
+        .format = ADC_DIGI_OUTPUT_FORMAT_TYPE1,
+    };
+    ESP_ERROR_CHECK(adc_digi_controller_configure(&dig_cfg));
+}
+
+Wav8BitLoader *wav = nullptr;
+void storeTask(void *param) {
+    while(true) {
+        uint32_t taskCount = ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+        wav->writeData((uint8_t *)storePointer, EXCHANGE_BUFFER_SIZE);
     }
 }
 
-void loop() {
+void setup() {
+ 
+    Serial.begin(115200);
+
+    if(!SD.begin(SS, SPI, 10000000)) {
+        Serial.println("Erro ao inicializar SD!");
+        ESP.restart();
+    }
+
+    wav = new Wav8BitLoader(SD, "/novo.wav");
+    if(wav->header.chunkSize == 0) {
+        Serial.println("Erro ao ler arquivo!");
+        ESP.restart();
+    }
+
+    // Cria tarefa de gravação
+    xTaskCreate(storeTask, "SD task", 2048, nullptr, 1, &storeTaskHandle);
+    if(storeTaskHandle == nullptr) {
+        Serial.println("Falha ao criar tarefa");
+        ESP.restart();
+    }
+
+    continuous_adc_init();
+
+    Serial.println("Iniciando captura de som");
+    adc_digi_start();
 }
+
+void loop() {
+    esp_err_t ret;
+    uint32_t ret_num = 0;
+    uint8_t result[ADC_NUM_BYTES];
+
+    // Espera pelos resultados do ADC por até 1 segundo
+    ret = adc_digi_read_bytes(result, ADC_NUM_BYTES, &ret_num, 1000);
+    if(ret == ESP_OK) {
+        for(size_t i = 0; i < ret_num; i += 2) {
+            adc_digi_output_data_t *data = reinterpret_cast<adc_digi_output_data_t*>(&result[i]);
+            uint8_t value = (data->type1.data >> 4) | ((data->type1.data >> 4) & 0x07);
+            loopPointer[loopCounter++] = value;
+        }
+
+        // Observe que ADC_NUM_BYTES devem ser lidos por vez de forma que o teste abaixo funcione.
+        // Como cada amostra tem 2 bytes temos ADC_NUM_BYTES / 2 (256) amostras por vez.
+        // Quando houver 2048 amostras notifica storeTask para gravar os dados.
+        if(loopCounter == EXCHANGE_BUFFER_SIZE) {
+            loopCounter = 0;
+            // Troca os buffers para poder continuar capturando os dados do ADC
+            // enquanto a tarefa storeTask grava os bytes no cartão SD
+            swap_buffers();
+            // Notifica storeTask que há dados a serem gravados
+            xTaskNotifyGive(storeTaskHandle);
+        }
+
+    } else if (ret != ESP_ERR_TIMEOUT) {
+        Serial.println("Erro inesperado!");
+        ESP.restart();
+    }
+}
+
+
+

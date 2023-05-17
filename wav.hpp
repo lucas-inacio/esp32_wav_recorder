@@ -1,8 +1,3 @@
-/**
- * Usando a biblioteca mySD disponível em https://github.com/nhatuan84/esp32-micro-sdcard.git.
- * A biblioteca SD padrão do ESP32 não possibilita acesso aleatório aos dados do arquivo.
- */
-
 #ifndef WAV_HPP
 #define WAV_HPP
 
@@ -33,15 +28,12 @@ struct Wav8BitLoader {
 
     Wav8BitLoader(fs::FS &fileSystem, const char *filename);
     ~Wav8BitLoader();
-    bool flush();
-    bool writeSample(uint8_t sample);
+    bool writeData(uint8_t *data, size_t size);
     void printHeader() const;
 private:
     bool createHeader(File &file);
     bool loadHeader(File &file);
-
-    uint8_t m_Buffer[BUFFER_LENGTH];
-    size_t m_BufferCounter;
+    
     const char *m_FileName;
     fs::FS &m_FileSystem;
     File m_File;

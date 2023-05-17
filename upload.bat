@@ -1,0 +1,1 @@
+arduino-cli upload -b esp32:esp32:esp32doit-devkit-v1 -p %1 --verbose

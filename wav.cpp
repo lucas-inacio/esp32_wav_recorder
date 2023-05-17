@@ -19,7 +19,7 @@ bool writeLoop(File &file, uint8_t *data, size_t size) {
 }
 
 Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
-: m_FileName{filename}, m_BufferCounter{0}, m_FileSystem{fileSystem} {
+: m_FileName{filename}, m_FileSystem{fileSystem} {
     // Se o arquivo existir abre para leitura e preenche o cabeçalho.
     // Senão cria o cabeçalho do zero. O arquivo é mantido aberto no modo
     // de escrita.
@@ -45,44 +45,26 @@ Wav8BitLoader::Wav8BitLoader(fs::FS &fileSystem, const char *filename)
 }
 
 Wav8BitLoader::~Wav8BitLoader() {
-    if(m_BufferCounter > 0) {
-        // Escreve dados restantes
-        flush();
+    if(m_File) {
         m_File.close();
     }
 }
 
-bool Wav8BitLoader::flush() {
-    // unsigned long start = millis();
-
-    // Pula para o final do arquivo
+bool Wav8BitLoader::writeData(uint8_t *data, size_t size) {
     m_File.seek(m_File.size());
-    if(writeLoop(m_File, m_Buffer, m_BufferCounter)) {
+    if(writeLoop(m_File, data, size)) {
         // Atualiza os cabeçalhos. Informação de tamanho do arquivo.
-        header.chunkSize += m_BufferCounter;
+        header.chunkSize += size;
         m_File.seek(4);
         writeLoop(m_File, reinterpret_cast<uint8_t *>(&header.chunkSize), 4);
 
-        header.subChunk2Size += m_BufferCounter;
+        header.subChunk2Size += size;
         m_File.seek(40);
         writeLoop(m_File, reinterpret_cast<uint8_t *>(&header.subChunk2Size), 4);
 
         m_File.flush();
-        m_BufferCounter = 0;
     } else {
         return false;
-    }
-
-    // Serial.println(millis() - start);
-    return true;
-}
-
-bool Wav8BitLoader::writeSample(uint8_t sample) {
-    m_Buffer[m_BufferCounter++] = sample;
-
-    // Esvazia o buffer periodicamente
-    if(m_BufferCounter == BUFFER_LENGTH) {
-        return flush();
     }
 
     return true;
@@ -162,14 +144,14 @@ bool Wav8BitLoader::createHeader(File &file) {
     // Number of channels 1
     wavHeader[22] = 1;
     wavHeader[23] = 0;
-    // Sample rate 8kHz
-    wavHeader[24] = 0x40;
-    wavHeader[25] = 0x1F;
+    // Sample rate 44,1kHz
+    wavHeader[24] = 0x44;
+    wavHeader[25] = 0xAC;
     wavHeader[26] = 0;
     wavHeader[27] = 0;
     // Byte rate = Sample rate * Num channels * Bytes per sample
-    wavHeader[28] = 0x40;
-    wavHeader[29] = 0x1F;
+    wavHeader[28] = 0x44;
+    wavHeader[29] = 0xAC;
     wavHeader[30] = 0;
     wavHeader[31] = 0;
     // Block align = Num channels * Bytes per sample

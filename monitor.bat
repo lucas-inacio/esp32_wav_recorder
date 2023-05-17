@@ -1,0 +1,1 @@
+arduino-cli.exe monitor -p %1% -c baudrate=115200
