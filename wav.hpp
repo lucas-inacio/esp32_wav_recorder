@@ -1,7 +1,6 @@
 #ifndef WAV_HPP
 #define WAV_HPP
 
-#define BUFFER_LENGTH   4096
 #define WAV_HEADER_SIZE 44
 
 #include <Arduino.h>
