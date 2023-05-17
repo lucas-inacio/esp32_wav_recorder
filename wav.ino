@@ -43,7 +43,7 @@ static void continuous_adc_init(void)
 
     // Configura o canal 7 do ADC1 (GPIO35)
     adc_digi_pattern_config_t adc_pattern = {
-        .atten = ADC_ATTEN_DB_0,
+        .atten = ADC_ATTEN_DB_11,
         .channel = ADC1_CHANNEL_7,
         .unit = 0,
         .bit_width = SOC_ADC_DIGI_MAX_BITWIDTH,
