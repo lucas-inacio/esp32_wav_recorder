@@ -114,7 +114,7 @@ void loop() {
 
         // Observe que ADC_NUM_BYTES devem ser lidos por vez de forma que o teste abaixo funcione.
         // Como cada amostra tem 2 bytes temos ADC_NUM_BYTES / 2 (256) amostras por vez.
-        // Quando houver 2048 amostras notifica storeTask para gravar os dados.
+        // Quando houver 2048 / 2 amostras notifica storeTask para gravar os dados.
         if(loopCounter == EXCHANGE_BUFFER_SIZE) {
             loopCounter = 0;
             // Troca os buffers para poder continuar capturando os dados do ADC
