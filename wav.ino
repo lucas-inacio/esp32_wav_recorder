@@ -55,7 +55,7 @@ static void continuous_adc_init(void)
         .conv_limit_num = 250,
         .pattern_num = 1, // Apenas um canal é utilizado
         .adc_pattern = &adc_pattern,
-        .sample_freq_hz = 44100, // Amostragem a 8kS/s (áudio a 8kHz)
+        .sample_freq_hz = 44100, // Amostragem a 44,1kS/s (áudio a 44,1kHz)
         .conv_mode = ADC_CONV_SINGLE_UNIT_1,
         .format = ADC_DIGI_OUTPUT_FORMAT_TYPE1,
     };
