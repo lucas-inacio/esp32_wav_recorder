@@ -15,7 +15,7 @@
 
 // Dupla de buffers. Eles são trocados sempre que há dados suficientes para escrita.
 // O tamanho deve ser um múltiplo de ADC_NUM_BYTES / 2
-#define EXCHANGE_BUFFER_SIZE 2048
+#define EXCHANGE_BUFFER_SIZE 4096
 uint8_t buffer1[EXCHANGE_BUFFER_SIZE];
 uint8_t buffer2[EXCHANGE_BUFFER_SIZE];
 size_t loopCounter = 0;
@@ -86,7 +86,7 @@ void setup() {
     }
 
     // Cria tarefa de gravação
-    xTaskCreate(storeTask, "SD task", 2048, nullptr, 1, &storeTaskHandle);
+    xTaskCreate(storeTask, "SD task", EXCHANGE_BUFFER_SIZE, nullptr, 1, &storeTaskHandle);
     if(storeTaskHandle == nullptr) {
         Serial.println("Falha ao criar tarefa");
         ESP.restart();
