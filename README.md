@@ -14,3 +14,14 @@ There are two buffers that are swapped when enough data is available.
 When this happens the ```storeTask``` is notified by the ```loop``` and begins to write the SD card.
 The ```loop``` can then continue to receive samples on the free buffer.
 
+## Resources
+This project is an experiment that uses only the ADC capabilities.
+There are other methods to sample audio like I2S, or use the I2S peripheral to acquire from the ADC.
+Check the links below to find out how:
+
+- [ESP32 Audio by atomic14](https://github.com/atomic14/esp32_audio)
+- [Arduino Audio Tools by pschatzmann](https://github.com/pschatzmann/arduino-audio-tools)
+
+## References
+- [ESP-IDF Programming Guide (v4.4.4)](https://docs.espressif.com/projects/esp-idf/en/v4.4.4/esp32/api-reference/peripherals/adc.html)
+- [ESP-IDF ADC Example on Github](https://github.com/espressif/esp-idf/tree/release/v4.4/examples/peripherals/adc/dma_read)
